@@ -40,6 +40,9 @@ DiplElEn=DiplEl(:,2)/2;
 i=17;
 fitReDiplEl = fit(DiplElEn,DiplEl(:,i),'nearestinterp');
 fitImDiplEl = fit(DiplElEn,-DiplEl(:,i+1),'nearestinterp');
+piecewiceReDipEl = fitReDiplEl.p;
+piecewiceImDipEl = fitImDiplEl.p;
+
     
 ImportDipEl="Intial_2s22p5_(" + config + 'l' + num2str(l) + ')_k' + num2str(2*k) + '2_Final_2s22p5_(' + config + 'l' + num2str(lf) + ')_k' + num2str(2*kf) + '2' + '_J' + num2str(J) + '.out'; %%there will be initial configuration in Jk coupling
         ContDiplEl=caseread(ImportDipEl);
@@ -89,22 +92,27 @@ E2=energymin(index):interval:energymax(index);
 Cont1=fitCont(E1,E2);
 Cont2=fitCont2(E1,E2);   
 
+Eeen = energymin(index) :interval: energymax(index);
+abs_ppval = abs(ppval(piecewiceReDipEl,Eeen) + 1j * ppval(piecewiceImDipEl, Eeen));
+
 tic
     for index=4
     %parfor index=1:4
     Z=3;
     Zf=(energymin(index)+2*interval)/interval;
+    ii = 2;
+
     for Ef=energymin(index)+interval:interval:energymax(index)-2*interval
 
         Y=2;
         
-        Fzzz=TimeCont2{index}(Z,Z,Z)*abs(fitReDiplEl(Ef)+1j*fitImDiplEl(Ef));
+        Fzzz=TimeCont2{index}(Z,Z,Z)*abs_ppval(ii);
         
         firstcontpv=0;
         X=1;
         for En=energymin(index):interval:energymax(index)
             if abs(Ef-En)>10^(-10)
-                firstcontpv=firstcontpv+interval*(TimeCont2{index}(X,Z,Z)*abs(fitReDiplEl(En)+1j*fitImDiplEl(En))*Cont1(Z,X)-Cont1(Z,Z)*Fzzz)*(1/(En-Ef));
+                firstcontpv=firstcontpv+interval*(TimeCont2{index}(X,Z,Z)*abs_ppval(X)*Cont1(Z,X)-Cont1(Z,Z)*Fzzz)*(1/(En-Ef));
             else
                 firstcontpv=firstcontpv+Fzzz*(Cont1(Z,Z)*log((energymax(index)-Ef)/(Ef-energymin(index)))+lJk1*sign(l-lf)*sqrt(2*Ef)*polecos1(Z,1));                   
             end
@@ -115,13 +123,13 @@ tic
             
             X=1;
                        
-            Fyyz=TimeCont2{index}(Y,Y,Z)*abs(fitReDiplEl(Ek)+1j*fitImDiplEl(Ek));
+            Fyyz=TimeCont2{index}(Y,Y,Z)*abs_ppval(Y);
             
             firstcont=0; 
             for En=energymin(index):interval:energymax(index)
                                   
                 if abs(Ek-En)>10^(-10)
-                    firstcont=firstcont+interval*(TimeCont2{index}(X,Y,Z)*abs(fitReDiplEl(En)+1j*fitImDiplEl(En))*Cont1(Y,X)-Cont1(Y,Y)*Fyyz)*(1/(En-Ek));
+                    firstcont=firstcont+interval*(TimeCont2{index}(X,Y,Z)*abs_ppval(X)*Cont1(Y,X)-Cont1(Y,Y)*Fyyz)*(1/(En-Ek));
                 else
                     firstcont=firstcont+Fyyz*(Cont1(Y,Y)*log((energymax(index)-Ek)/(Ek-energymin(index)))+lJk1*sign(l-lf)*sqrt(2*Ek)*polecos1(Y,1));                   
                 end
@@ -139,6 +147,7 @@ tic
         end
         Z=Z+1;
         Zf=Zf+1;
+        ii = ii + 1;
     end
     SecondContDipElTimeInt{index}(:,1)=znak*1/sqrt((2*Jfin+1)*(2*J+1)*3)*clebschgordan(1,0,1,0,J,0)*clebschgordan(1,0,J,0,Jfin,0)*secondcont{index}(:,1).*exp(1j*fitContPhase2(Ee))*(1j^(-lfin)).*exp(1j*angle(igamma(lfin+1-1j./sqrt(2*(Ee)),0)));
     end
